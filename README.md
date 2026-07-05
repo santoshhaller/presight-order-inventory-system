@@ -111,7 +111,8 @@ Service pods handling a flash-sale-style spike on one product.
 API and fires a refresh event on change — so:
 
 ```bash
-kubectl edit configmap inventory-threshold-config -n presight
+kubectl patch configmap inventory-threshold-config -n presight --type merge -p '{\"data\":{\"low-stock-threshold\":\"25\"}}'
+kubectl get configmap inventory-threshold-config -n presight -o yaml
 # change low-stock-threshold: "10" -> "25"
 ```
 
