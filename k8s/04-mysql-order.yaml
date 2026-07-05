@@ -1,0 +1,76 @@
+# Single-instance MySQL for demo purposes. For real production HA you'd
+# point DB_* env vars at a managed, replicated database (RDS Multi-AZ,
+# Cloud SQL HA, or a properly operated Vitess/Percona XtraDB cluster)
+# instead of running stateful DB pods yourself - see README "Production
+# Considerations". A StatefulSet + PVC is used here so at minimum data
+# survives pod rescheduling within the demo cluster.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-order
+  namespace: presight
+spec:
+  serviceName: mysql-order
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-order
+  template:
+    metadata:
+      labels:
+        app: mysql-order
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: order_db
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef: { name: order-db-credentials, key: username }
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: order-db-credentials, key: password }
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: mysql-root-credentials, key: root-password }
+          volumeMounts:
+            - name: mysql-order-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-order-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-order
+  namespace: presight
+spec:
+  clusterIP: None   # headless, matches the StatefulSet
+  selector:
+    app: mysql-order
+  ports:
+    - port: 3306
+      targetPort: 3306

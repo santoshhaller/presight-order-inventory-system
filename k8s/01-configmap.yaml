@@ -1,0 +1,14 @@
+# Consumed dynamically by inventory-service via spring-cloud-kubernetes-client-config.
+# Editing `low-stock-threshold` and running:
+#   kubectl apply -f k8s/01-configmap.yaml
+# is picked up by every running inventory-service pod within a few
+# seconds - no restart, no redeploy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-threshold-config
+  namespace: presight
+  labels:
+    app: inventory-service
+data:
+  low-stock-threshold: "10"

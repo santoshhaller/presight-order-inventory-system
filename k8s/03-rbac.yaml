@@ -1,0 +1,34 @@
+# spring-cloud-starter-kubernetes-client-config needs permission to read
+# and watch ConfigMaps/Secrets in this namespace in order to detect the
+# threshold change and fire a RefreshScope event. Scoped to a dedicated
+# ServiceAccount rather than the namespace default, and limited to
+# read-only verbs on exactly the resources it needs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inventory-service-sa
+  namespace: presight
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: configmap-reader
+  namespace: presight
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: inventory-service-configmap-reader
+  namespace: presight
+subjects:
+  - kind: ServiceAccount
+    name: inventory-service-sa
+    namespace: presight
+roleRef:
+  kind: Role
+  name: configmap-reader
+  apiGroup: rbac.authorization.k8s.io
